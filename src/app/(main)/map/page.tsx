@@ -1,11 +1,6 @@
-import dynamic from "next/dynamic";
 import { createClient } from "@/lib/supabase/server";
+import { MapView } from "@/components/map/map-view";
 import { getGeoLocation } from "@/lib/geoip";
-
-const MapView = dynamic(
-  () => import("@/components/map/map-view").then((m) => m.MapView),
-  { ssr: false, loading: () => <div className="flex-1 bg-background" /> }
-);
 
 export default async function MapPage() {
   const supabase = await createClient();
