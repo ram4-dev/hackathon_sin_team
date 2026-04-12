@@ -5,5 +5,7 @@ ALTER TABLE hackathons
 
 -- Full unique constraint (required for Supabase upsert onConflict)
 ALTER TABLE hackathons
+  DROP CONSTRAINT IF EXISTS hackathons_source_source_id_key;
+ALTER TABLE hackathons
   ADD CONSTRAINT hackathons_source_source_id_key
   UNIQUE (source, source_id);
