@@ -52,6 +52,7 @@ interface MapViewProps {
   hackathons: MapHackathon[];
   remoteHackathons?: RemoteHackathon[];
   initialCenter?: { lat: number; lng: number };
+  mapboxToken: string;
 }
 
 type Layer = "builders" | "hackathons" | "both";
@@ -264,7 +265,7 @@ function HackathonCard({ data, onClose }: { data: MapHackathon; onClose: () => v
 }
 
 // ── Main component ─────────────────────────────────────────────────────────
-export function MapView({ builders, hackathons, remoteHackathons = [], initialCenter }: MapViewProps) {
+export function MapView({ builders, hackathons, remoteHackathons = [], initialCenter, mapboxToken }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
@@ -300,7 +301,7 @@ export function MapView({ builders, hackathons, remoteHackathons = [], initialCe
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
-    mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
+    mapboxgl.accessToken = mapboxToken;
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
@@ -628,13 +629,13 @@ export function MapView({ builders, hackathons, remoteHackathons = [], initialCe
         </div>
 
         {/* No token warning */}
-        {!process.env.NEXT_PUBLIC_MAPBOX_TOKEN && (
+        {!mapboxToken && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/80">
             <Card>
               <CardContent className="pt-6 text-center space-y-2">
                 <MapPin className="h-8 w-8 mx-auto text-muted-foreground" />
                 <p className="font-medium">Mapbox token required</p>
-                <p className="text-sm text-muted-foreground">Add NEXT_PUBLIC_MAPBOX_TOKEN to .env.local</p>
+                <p className="text-sm text-muted-foreground">Add MAPBOX_TOKEN to your environment variables</p>
               </CardContent>
             </Card>
           </div>
