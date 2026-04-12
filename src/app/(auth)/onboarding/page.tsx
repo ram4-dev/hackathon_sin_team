@@ -12,7 +12,7 @@ import { MapPin, Loader2 } from "lucide-react";
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
   const [locating, setLocating] = useState(false);
@@ -56,7 +56,7 @@ export default function OnboardingPage() {
     if (!user) return;
     setLoading(true);
 
-    await supabase.from("profiles").upsert({
+    const { error } = await supabase.from("profiles").upsert({
       id: user.id,
       username: form.username,
       full_name: form.full_name || user.fullName || null,
@@ -68,6 +68,13 @@ export default function OnboardingPage() {
       updated_at: new Date().toISOString(),
     });
 
+    if (error) {
+      console.error("Error saving profile:", error);
+      setLoading(false);
+      return;
+    }
+
+    router.refresh();
     router.push("/map");
   };
 
@@ -144,7 +151,7 @@ export default function OnboardingPage() {
           </CardContent>
         </Card>
 
-        <Button onClick={handleSubmit} className="w-full" disabled={loading || !form.username}>
+        <Button onClick={handleSubmit} className="w-full" disabled={loading || !form.username || !isLoaded}>
           {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
           {loading ? "Saving..." : "Get Started"}
         </Button>
