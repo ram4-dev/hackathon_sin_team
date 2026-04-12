@@ -19,7 +19,7 @@ export async function GET() {
   }
 
   // 2. Test Nominatim via geocode helper
-  let geoResult: unknown = null;
+  let geoResult: { lat: number; lng: number } | null = null;
   let geoError: string | null = null;
   try {
     const { geocode } = await import("@/lib/scrapers/geocode");
