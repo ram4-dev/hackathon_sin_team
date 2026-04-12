@@ -1,0 +1,210 @@
+{
+  "feature": "clerk-auth-migration",
+  "local_config": {
+    "mysql": null,
+    "kvs": null,
+    "bigqueue": null
+  },
+  "stats": { "total": 10, "done": 0, "by_layer": { "1": 7, "2": 0, "3": 3 } },
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "title": "Install Clerk SDK and configure env vars",
+      "description": "Install @clerk/nextjs. Add NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY, CLERK_SECRET_KEY, and redirect URL env vars to .env.local. Remove @supabase/ssr dependency.",
+      "status": "pending",
+      "layer": 1,
+      "complexity": "Low",
+      "depends_on": [],
+      "files": ["package.json", ".env.local", ".env.local.example"],
+      "acceptance_criteria": [
+        "AC-1: @clerk/nextjs is installed and in package.json",
+        "AC-2: @supabase/ssr is removed from package.json",
+        "AC-3: Clerk env vars added to .env.local.example",
+        "GATE: npm install completes without errors"
+      ],
+      "references": ["US-1"]
+    },
+    {
+      "id": "TASK-002",
+      "title": "Refactor Supabase clients to DB-only",
+      "description": "Rewrite src/lib/supabase/server.ts to use plain createClient with service-role key (no cookies). Rewrite src/lib/supabase/client.ts to use plain createClient with anon key. Delete src/lib/supabase/proxy.ts. Keep service.ts unchanged.",
+      "status": "pending",
+      "layer": 1,
+      "complexity": "Medium",
+      "depends_on": ["TASK-001"],
+      "files": ["src/lib/supabase/server.ts", "src/lib/supabase/client.ts", "src/lib/supabase/proxy.ts"],
+      "acceptance_criteria": [
+        "AC-1: server.ts uses createClient from @supabase/supabase-js with service-role key",
+        "AC-2: client.ts uses createClient from @supabase/supabase-js with anon key",
+        "AC-3: proxy.ts is deleted",
+        "AC-4: No imports from @supabase/ssr remain in codebase",
+        "GATE: tsc --noEmit passes"
+      ],
+      "references": ["DD-1"]
+    },
+    {
+      "id": "TASK-003",
+      "title": "Add ClerkProvider and create auth helper",
+      "description": "Wrap app in ClerkProvider in src/app/layout.tsx. Create src/lib/auth.ts with getAuthUserId() helper that wraps Clerk's auth().",
+      "status": "pending",
+      "layer": 1,
+      "complexity": "Low",
+      "depends_on": ["TASK-001"],
+      "files": ["src/app/layout.tsx", "src/lib/auth.ts"],
+      "acceptance_criteria": [
+        "AC-1: Root layout wraps children with <ClerkProvider>",
+        "AC-2: src/lib/auth.ts exports getAuthUserId() returning string | null",
+        "GATE: tsc --noEmit passes"
+      ],
+      "references": ["US-1"]
+    },
+    {
+      "id": "TASK-004",
+      "title": "Rewrite middleware with clerkMiddleware",
+      "description": "Replace src/proxy.ts to use clerkMiddleware from @clerk/nextjs/server. Define public routes (login, map, builders, hackathons, API reads, cron). Protect all other routes. Keep redirect from / to /map.",
+      "status": "pending",
+      "layer": 1,
+      "complexity": "Medium",
+      "depends_on": ["TASK-003"],
+      "files": ["src/proxy.ts"],
+      "acceptance_criteria": [
+        "AC-1: proxy.ts exports named proxy function using clerkMiddleware",
+        "AC-2: Public routes (/map, /builders, /hackathons, /login) don't require auth",
+        "AC-3: Protected routes (/saved, /lfg, /profile, /admin) require auth",
+        "AC-4: Root path / redirects to /map",
+        "GATE: npm run build passes"
+      ],
+      "references": ["US-3"]
+    },
+    {
+      "id": "TASK-005",
+      "title": "Replace login page with Clerk SignIn component",
+      "description": "Rewrite src/app/(auth)/login/page.tsx to render Clerk's <SignIn> component with dark theme appearance. Delete src/app/api/auth/callback/route.ts (Clerk handles callbacks internally).",
+      "status": "pending",
+      "layer": 1,
+      "complexity": "Low",
+      "depends_on": ["TASK-003"],
+      "files": ["src/app/(auth)/login/page.tsx", "src/app/api/auth/callback/route.ts"],
+      "acceptance_criteria": [
+        "AC-1: Login page renders <SignIn> with dark theme styling",
+        "AC-2: OAuth callback route is deleted",
+        "AC-3: No references to supabase.auth.signInWithOAuth remain",
+        "GATE: npm run build passes"
+      ],
+      "references": ["US-1", "DD-2"]
+    },
+    {
+      "id": "TASK-006",
+      "title": "Simplify onboarding to 1 step and add new-user detection",
+      "description": "Rewrite src/app/(auth)/onboarding/page.tsx to a single form (username + location). Use Clerk's useUser() for user data. Update src/app/(main)/layout.tsx to detect new users (no profile/username) and redirect to /onboarding.",
+      "status": "pending",
+      "layer": 1,
+      "complexity": "Medium",
+      "depends_on": ["TASK-002", "TASK-003"],
+      "files": ["src/app/(auth)/onboarding/page.tsx", "src/app/(main)/layout.tsx"],
+      "acceptance_criteria": [
+        "AC-1: Onboarding shows single form with username (required) and location (optional with geolocation)",
+        "AC-2: Display name pre-filled from Clerk user.fullName, avatar from user.imageUrl",
+        "AC-3: Profile created in Supabase with Clerk user ID as PK",
+        "AC-4: Main layout redirects to /onboarding if user has no username",
+        "GATE: npm run build passes"
+      ],
+      "references": ["US-2", "DD-4"]
+    },
+    {
+      "id": "TASK-007",
+      "title": "Migrate server components and API routes to Clerk auth",
+      "description": "Replace supabase.auth.getUser() with getAuthUserId() in 7 files: page.tsx (root), (main)/layout.tsx, saved/page.tsx, lfg/page.tsx, admin/page.tsx, admin/hackathons/page.tsx, api/lfg/route.ts. Update DB queries to use createServerClient().",
+      "status": "pending",
+      "layer": 1,
+      "complexity": "Medium",
+      "depends_on": ["TASK-002", "TASK-003"],
+      "files": [
+        "src/app/page.tsx",
+        "src/app/(main)/layout.tsx",
+        "src/app/(main)/saved/page.tsx",
+        "src/app/(main)/lfg/page.tsx",
+        "src/app/(main)/admin/page.tsx",
+        "src/app/(main)/admin/hackathons/page.tsx",
+        "src/app/api/lfg/route.ts"
+      ],
+      "acceptance_criteria": [
+        "AC-1: All 7 files use getAuthUserId() instead of supabase.auth.getUser()",
+        "AC-2: All DB queries use createServerClient() (DB-only)",
+        "AC-3: Auth guards redirect to /login when userId is null",
+        "AC-4: Admin pages still check profile.is_admin",
+        "GATE: grep -r 'supabase.auth.getUser' src/app returns 0 results"
+      ],
+      "references": ["US-3", "US-5"]
+    },
+    {
+      "id": "TASK-008",
+      "title": "Migrate client components to Clerk hooks",
+      "description": "Replace supabase.auth.getUser() with useAuth()/useUser()/useClerk() in 5 files: nav-bar.tsx (signOut), profile/page.tsx, lfg/new/page.tsx, hackathon-actions.tsx, builder-actions.tsx.",
+      "status": "pending",
+      "layer": 1,
+      "complexity": "Medium",
+      "depends_on": ["TASK-002", "TASK-003"],
+      "files": [
+        "src/components/nav-bar.tsx",
+        "src/app/(main)/profile/page.tsx",
+        "src/app/(main)/lfg/new/page.tsx",
+        "src/components/hackathons/hackathon-actions.tsx",
+        "src/components/builders/builder-actions.tsx"
+      ],
+      "acceptance_criteria": [
+        "AC-1: nav-bar.tsx uses useClerk().signOut() for logout",
+        "AC-2: All 5 files use Clerk hooks instead of supabase.auth.getUser()",
+        "AC-3: userId is obtained from useAuth() in all components",
+        "GATE: grep -r 'supabase.auth' src/components src/app returns 0 results"
+      ],
+      "references": ["US-4", "US-5"]
+    },
+    {
+      "id": "TASK-009",
+      "title": "Database schema migration (UUID to TEXT)",
+      "description": "Create and run SQL migration against Supabase: drop profiles FK to auth.users, ALTER all ID columns from UUID to TEXT (profiles, saved_items, hackathon_interests, lfg_posts, notifications, hackathons), drop handle_new_user trigger, disable RLS on all tables.",
+      "status": "pending",
+      "layer": 1,
+      "complexity": "Medium",
+      "depends_on": [],
+      "files": ["supabase/migrations/002_clerk_migration.sql"],
+      "acceptance_criteria": [
+        "AC-1: profiles.id column is TEXT type",
+        "AC-2: All FK columns (user_id, author_id, created_by) are TEXT type",
+        "AC-3: handle_new_user trigger is dropped",
+        "AC-4: RLS is disabled on all 6 tables",
+        "GATE: SQL migration runs without errors"
+      ],
+      "references": ["DD-3"]
+    },
+    {
+      "id": "TASK-010",
+      "title": "End-to-end smoke test and cleanup",
+      "description": "Verify full auth flow works: new user login → onboarding → map, returning user → map, sign out, protected routes, admin access. Verify zero remaining supabase.auth references. Update .env.local.example.",
+      "status": "pending",
+      "layer": 1,
+      "complexity": "Low",
+      "depends_on": ["TASK-004", "TASK-005", "TASK-006", "TASK-007", "TASK-008", "TASK-009"],
+      "files": [],
+      "acceptance_criteria": [
+        "AC-1: npm run build completes with zero errors",
+        "AC-2: grep -r 'supabase.auth' src/ returns 0 results",
+        "AC-3: grep -r '@supabase/ssr' src/ returns 0 results",
+        "AC-4: .env.local.example includes Clerk vars",
+        "GATE: Full build + no supabase.auth references"
+      ],
+      "references": ["US-1", "US-2", "US-3", "US-4", "US-5"]
+    }
+  ],
+  "dependency_graph": {
+    "by_layer": {
+      "1": {
+        "level_0": ["TASK-001", "TASK-009"],
+        "level_1": ["TASK-002", "TASK-003"],
+        "level_2": ["TASK-004", "TASK-005", "TASK-006", "TASK-007", "TASK-008"],
+        "level_3": ["TASK-010"]
+      }
+    }
+  }
+}

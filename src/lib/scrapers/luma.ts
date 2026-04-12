@@ -1,0 +1,132 @@
+import type { ScrapedHackathon } from "./types";
+
+/** luma.com — parses __NEXT_DATA__ JSON embedded in their Next.js pages */
+
+interface LumaEvent {
+  api_id: string;
+  name: string;
+  description?: string;
+  start_at: string;
+  end_at: string;
+  url: string;
+  cover_url?: string;
+  location_type?: string;
+  geo_address_info?: {
+    city?: string;
+    country?: string;
+    full_address?: string;
+    type?: string;
+    city_state?: string;
+  };
+  hosts?: { name?: string }[];
+  ticket_info?: { is_free?: boolean };
+}
+
+function parseNextData(html: string): LumaEvent[] {
+  const match = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+  if (!match) return [];
+  try {
+    const json = JSON.parse(match[1]);
+    const props = json?.props?.pageProps;
+    if (!props) return [];
+
+    // Actual structure as of 2025: initialData.featured_place.events
+    if (props.initialData?.featured_place?.events) {
+      return props.initialData.featured_place.events.map(
+        (e: { event: LumaEvent } | LumaEvent) => ("event" in e ? e.event : e)
+      );
+    }
+    // Fallbacks for other page types
+    if (props.searchResults?.events) {
+      return props.searchResults.events.map(
+        (e: { event: LumaEvent } | LumaEvent) => ("event" in e ? e.event : e)
+      );
+    }
+    if (props.events) {
+      return props.events.map(
+        (e: { event: LumaEvent } | LumaEvent) => ("event" in e ? e.event : e)
+      );
+    }
+    if (props.data?.events) {
+      return props.data.events.map(
+        (e: { event: LumaEvent } | LumaEvent) => ("event" in e ? e.event : e)
+      );
+    }
+  } catch {
+    return [];
+  }
+  return [];
+}
+
+function toISO(dt?: string): string | undefined {
+  if (!dt) return undefined;
+  const d = new Date(dt);
+  return isNaN(d.getTime()) ? undefined : d.toISOString().slice(0, 10);
+}
+
+export async function scrapeLuma(): Promise<ScrapedHackathon[]> {
+  const urls = [
+    "https://luma.com/hackathon",
+    "https://luma.com/discover?query=hackathon",
+  ];
+
+  const results: ScrapedHackathon[] = [];
+  const seen = new Set<string>();
+
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, {
+        headers: { "User-Agent": "HackathonFinder/1.0", Accept: "text/html" },
+        redirect: "follow",
+        next: { revalidate: 3600 },
+      });
+      if (!res.ok) continue;
+      const html = await res.text();
+      const events = parseNextData(html);
+
+      for (const ev of events) {
+        const evUrl = ev.url?.startsWith("http")
+          ? ev.url
+          : `https://luma.com/${ev.api_id}`;
+        if (seen.has(evUrl)) continue;
+        seen.add(evUrl);
+
+        const start = toISO(ev.start_at);
+        const end = toISO(ev.end_at);
+        const geo = ev.geo_address_info;
+        const isOnline =
+          ev.location_type === "online" ||
+          geo?.type === "online" ||
+          !geo?.city;
+
+        const status: ScrapedHackathon["status"] =
+          end && new Date(end) < new Date()
+            ? "past"
+            : start && new Date(start) <= new Date()
+            ? "active"
+            : "upcoming";
+
+        results.push({
+          source: "luma",
+          source_id: ev.api_id,
+          name: ev.name,
+          organizer: ev.hosts?.[0]?.name,
+          description: ev.description?.slice(0, 400),
+          start_date: start,
+          end_date: end,
+          modality: isOnline ? "remote" : "in-person",
+          location_city: isOnline ? undefined : geo?.city,
+          location_country: isOnline ? undefined : geo?.country,
+          tags: ["luma"],
+          official_url: evUrl,
+          image_url: ev.cover_url,
+          status,
+        });
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return results;
+}

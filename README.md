@@ -1,36 +1,108 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BuilderMap
 
-## Getting Started
+**Find hackathons, connect with builders, form teams.**
 
-First, run the development server:
+A discovery platform for builders who want to participate in hackathons, find compatible teammates, and form teams quickly.
+
+## Tech Stack
+
+- **Framework**: Next.js 16 (App Router)
+- **Database & Auth**: Supabase (PostgreSQL + OAuth)
+- **Map**: Mapbox GL JS
+- **UI**: shadcn/ui + Tailwind CSS v4
+- **Deployment**: Vercel
+
+## Setup
+
+### 1. Install dependencies
+
+```bash
+cd app
+npm install
+```
+
+### 2. Create a Supabase project
+
+1. Go to [supabase.com](https://supabase.com) and create a new project
+2. Go to **Authentication > Providers** and enable:
+   - Google (add Client ID + Secret from Google Cloud Console)
+   - GitHub (add Client ID + Secret from GitHub OAuth Apps)
+3. Set the redirect URL to: `http://localhost:3000/api/auth/callback`
+
+### 3. Run database migrations
+
+In the Supabase dashboard, go to **SQL Editor** and run the contents of:
+`supabase/migrations/001_initial.sql`
+
+### 4. (Optional) Load seed data
+
+Run `supabase/seed.sql` in the SQL Editor to populate 10 sample hackathons.
+
+### 5. Get a Mapbox token
+
+1. Create account at [mapbox.com](https://mapbox.com)
+2. Create a new access token (public token, free tier: 50k loads/month)
+
+### 6. Configure environment variables
+
+```bash
+cp .env.local.example .env.local
+```
+
+Edit `.env.local`:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+NEXT_PUBLIC_MAPBOX_TOKEN=pk.eyJ1Ii...
+```
+
+### 7. Run the development server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Features
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Module | Route | Description |
+|--------|-------|-------------|
+| Map | `/map` | Interactive map with builders + hackathons |
+| Builders | `/builders` | Explorer list with filters |
+| Builder Profile | `/builders/[id]` | Public profile page |
+| Hackathons | `/hackathons` | Hackathon list with filters |
+| Hackathon Detail | `/hackathons/[id]` | Full info + interested builders + LFG posts |
+| LFG | `/lfg` | Looking-for-group listings |
+| Create LFG | `/lfg/new` | Create a team post |
+| Saved | `/saved` | Saved hackathons, builders, own posts |
+| Profile | `/profile` | Edit your profile |
+| Admin | `/admin` | Admin dashboard (admin users only) |
 
-## Learn More
+## Auth Flow
 
-To learn more about Next.js, take a look at the following resources:
+1. User visits `/login` → clicks "Continue with GitHub/Google"
+2. Supabase OAuth → redirects to `/api/auth/callback`
+3. New user → `/onboarding` (4-step wizard)
+4. Existing user → `/map`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Database Schema
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+6 tables: `profiles`, `hackathons`, `lfg_posts`, `saved_items`, `hackathon_interests`, `notifications`
 
-## Deploy on Vercel
+Full schema in `supabase/migrations/001_initial.sql`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Deployment to Vercel
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm i -g vercel
+vercel
+```
+
+Set these env vars in Vercel dashboard or CLI:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_MAPBOX_TOKEN`
+
+After deploying, add your Vercel domain to Supabase Auth redirect URLs.
