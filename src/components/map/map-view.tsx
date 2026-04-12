@@ -300,23 +300,13 @@ export function MapView({ builders, hackathons, remoteHackathons = [], initialCe
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
-    // Dummy pk.* value passes Mapbox GL's format check.
-    // The real token is never sent to the client — all requests are
-    // intercepted by transformRequest and proxied through /api/mapbox-proxy.
-    mapboxgl.accessToken = "pk.proxy";
+    mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: "mapbox://styles/mapbox/dark-v11",
       center: initialCenter ? [initialCenter.lng, initialCenter.lat] : [0, 20],
       zoom: initialCenter ? 9 : 2,
-      transformRequest: (url: string) => {
-        if (url.startsWith("https://api.mapbox.com")) {
-          const base = typeof window !== "undefined" ? window.location.origin : "";
-          return { url: `${base}/api/mapbox-proxy?url=${encodeURIComponent(url)}` };
-        }
-        return { url };
-      },
     });
 
     map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
