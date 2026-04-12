@@ -312,7 +312,8 @@ export function MapView({ builders, hackathons, remoteHackathons = [], initialCe
       zoom: initialCenter ? 9 : 2,
       transformRequest: (url: string) => {
         if (url.startsWith("https://api.mapbox.com")) {
-          return { url: `/api/mapbox-proxy?url=${encodeURIComponent(url)}` };
+          const base = typeof window !== "undefined" ? window.location.origin : "";
+          return { url: `${base}/api/mapbox-proxy?url=${encodeURIComponent(url)}` };
         }
         return { url };
       },
