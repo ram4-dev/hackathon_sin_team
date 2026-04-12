@@ -300,13 +300,22 @@ export function MapView({ builders, hackathons, remoteHackathons = [], initialCe
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
-    mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
+    // Dummy pk.* value passes Mapbox GL's format check.
+    // The real token is never sent to the client — all requests are
+    // intercepted by transformRequest and proxied through /api/mapbox-proxy.
+    mapboxgl.accessToken = "pk.proxy";
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: "mapbox://styles/mapbox/dark-v11",
       center: initialCenter ? [initialCenter.lng, initialCenter.lat] : [0, 20],
       zoom: initialCenter ? 9 : 2,
+      transformRequest: (url: string) => {
+        if (url.startsWith("https://api.mapbox.com")) {
+          return { url: `/api/mapbox-proxy?url=${encodeURIComponent(url)}` };
+        }
+        return { url };
+      },
     });
 
     map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
@@ -628,17 +637,6 @@ export function MapView({ builders, hackathons, remoteHackathons = [], initialCe
         </div>
 
         {/* No token warning */}
-        {!process.env.NEXT_PUBLIC_MAPBOX_TOKEN && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/80">
-            <Card>
-              <CardContent className="pt-6 text-center space-y-2">
-                <MapPin className="h-8 w-8 mx-auto text-muted-foreground" />
-                <p className="font-medium">Mapbox token required</p>
-                <p className="text-sm text-muted-foreground">Add NEXT_PUBLIC_MAPBOX_TOKEN to your environment variables</p>
-              </CardContent>
-            </Card>
-          </div>
-        )}
       </div>
     </div>
   );
