@@ -30,7 +30,6 @@ export default async function MapPage() {
       hackathons={hackathons ?? []}
       remoteHackathons={remoteHackathons ?? []}
       initialCenter={geo ?? undefined}
-      mapboxToken={process.env.MAPBOX_TOKEN ?? ""}
     />
   );
 }
