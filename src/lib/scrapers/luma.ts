@@ -22,6 +22,91 @@ interface LumaEvent {
   ticket_info?: { is_free?: boolean };
 }
 
+/** Extract a slug from a Luma URL like https://lu.ma/my-event → "my-event" */
+function slugFromUrl(url: string): string {
+  try {
+    const u = new URL(url.startsWith("http") ? url : `https://${url}`);
+    return u.pathname.replace(/^\//, "").split("/")[0] || url;
+  } catch {
+    return url;
+  }
+}
+
+function parseSingleEvent(html: string): LumaEvent | null {
+  const match = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+  if (!match) return null;
+  try {
+    const json = JSON.parse(match[1]);
+    const props = json?.props?.pageProps;
+    if (!props) return null;
+
+    // Actual Luma structure (confirmed): pageProps.initialData.data.event
+    if (props.initialData?.data?.event?.api_id) return props.initialData.data.event;
+    // Fallbacks for other page variants
+    if (props.initialData?.event?.api_id) return props.initialData.event;
+    if (props.event?.api_id) return props.event;
+    if (props.event?.event?.api_id) return props.event.event;
+    if (props.data?.event?.api_id) return props.data.event;
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+/**
+ * Fetch a single Luma event URL and return it as a ScrapedHackathon.
+ * Works for public events without authentication.
+ */
+export async function scrapeLumaEventUrl(
+  url: string
+): Promise<ScrapedHackathon | null> {
+  const normalizedUrl = url.startsWith("http") ? url : `https://luma.com/${url}`;
+  try {
+    const res = await fetch(normalizedUrl, {
+      headers: { "User-Agent": "HackathonFinder/1.0", Accept: "text/html" },
+      redirect: "follow",
+    });
+    if (!res.ok) return null;
+
+    const html = await res.text();
+    const ev = parseSingleEvent(html);
+    if (!ev) return null;
+
+    const evUrl = ev.url?.startsWith("http") ? ev.url : normalizedUrl;
+    const start = toISO(ev.start_at);
+    const end = toISO(ev.end_at);
+    const geo = ev.geo_address_info;
+    const isOnline =
+      ev.location_type === "online" || geo?.type === "online" || !geo?.city;
+
+    const status: ScrapedHackathon["status"] =
+      end && new Date(end) < new Date()
+        ? "past"
+        : start && new Date(start) <= new Date()
+        ? "active"
+        : "upcoming";
+
+    return {
+      source: "luma",
+      source_id: ev.api_id || slugFromUrl(normalizedUrl),
+      name: ev.name,
+      organizer: ev.hosts?.[0]?.name,
+      description: ev.description?.slice(0, 400),
+      start_date: start,
+      end_date: end,
+      modality: isOnline ? "remote" : "in-person",
+      location_city: isOnline ? undefined : geo?.city,
+      location_country: isOnline ? undefined : geo?.country,
+      tags: ["luma"],
+      official_url: evUrl,
+      image_url: ev.cover_url,
+      status,
+    };
+  } catch {
+    return null;
+  }
+}
+
 function parseNextData(html: string): LumaEvent[] {
   const match = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
   if (!match) return [];

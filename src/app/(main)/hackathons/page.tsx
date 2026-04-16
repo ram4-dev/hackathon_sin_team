@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { HackathonList } from "@/components/hackathons/hackathon-list";
+import { LumaImportButton } from "@/components/hackathons/luma-import-button";
 import type { Hackathon } from "@/types/database";
 
 export default async function HackathonsPage() {
@@ -18,11 +19,14 @@ export default async function HackathonsPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Hackathons</h1>
-        <p className="mt-1 text-muted-foreground">
-          {items.length} hackathon{items.length !== 1 ? "s" : ""} listed
-        </p>
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Hackathons</h1>
+          <p className="mt-1 text-muted-foreground">
+            {items.length} hackathon{items.length !== 1 ? "s" : ""} listed
+          </p>
+        </div>
+        <LumaImportButton />
       </div>
       <HackathonList hackathons={items} />
     </div>

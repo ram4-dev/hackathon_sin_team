@@ -33,7 +33,7 @@ const NAV_LINKS = [
   { href: "/map", label: "Map", icon: Map },
   { href: "/builders", label: "Builders", icon: Users },
   { href: "/hackathons", label: "Hackathons", icon: Trophy },
-  { href: "/lfg", label: "LFG", icon: Zap },
+  { href: "/lfg", label: "Teams", icon: Zap },
 ];
 
 interface NavBarProps {

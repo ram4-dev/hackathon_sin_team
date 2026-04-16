@@ -21,9 +21,7 @@ export default async function LfgPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          Looking for Group
-        </h1>
+        <h1 className="text-2xl font-bold tracking-tight">Teams</h1>
         <p className="text-muted-foreground">
           Find teammates or join a team for your next hackathon
         </p>

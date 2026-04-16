@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import { createClient } from "@/lib/supabase/client";
@@ -21,12 +21,32 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectTrigger,
-  SelectValue,
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, X } from "lucide-react";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
+
+const POST_TYPE_LABELS: Record<string, string> = {
+  looking_for_team: "Looking for Team",
+  looking_for_members: "Looking for Members",
+};
+
+const MODALITY_LABELS: Record<string, string> = {
+  remote: "Remote",
+  "in-person": "In-person",
+  both: "Both",
+};
+
+const LANGUAGE_OPTIONS = [
+  { value: "en", label: "English" },
+  { value: "es", label: "Español" },
+  { value: "pt", label: "Português" },
+  { value: "fr", label: "Français" },
+  { value: "de", label: "Deutsch" },
+  { value: "zh", label: "中文" },
+];
 
 export default function NewLfgPostPage() {
   const router = useRouter();
@@ -40,6 +60,7 @@ export default function NewLfgPostPage() {
   const [description, setDescription] = useState("");
   const [hackathonId, setHackathonId] = useState<string>("");
   const [hackathonSearch, setHackathonSearch] = useState("");
+  const [hackathonDropdownOpen, setHackathonDropdownOpen] = useState(false);
   const [hackathons, setHackathons] = useState<Hackathon[]>([]);
   const [skillsOffered, setSkillsOffered] = useState<string[]>([]);
   const [rolesNeeded, setRolesNeeded] = useState<string[]>([]);
@@ -49,12 +70,13 @@ export default function NewLfgPostPage() {
   const [levelExpected, setLevelExpected] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hackathonRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     async function fetchHackathons() {
       const { data } = await supabase
         .from("hackathons")
-        .select("*")
+        .select("id, name, start_date, status")
         .order("start_date", { ascending: false });
       if (data) setHackathons(data as Hackathon[]);
     }
@@ -62,9 +84,34 @@ export default function NewLfgPostPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const filteredHackathons = hackathons.filter((h) =>
-    h.name.toLowerCase().includes(hackathonSearch.toLowerCase())
-  );
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (hackathonRef.current && !hackathonRef.current.contains(e.target as Node)) {
+        setHackathonDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const filteredHackathons = hackathons
+    .filter((h) =>
+      hackathonSearch.length === 0 ||
+      h.name.toLowerCase().includes(hackathonSearch.toLowerCase())
+    )
+    .slice(0, 8);
+
+  function selectHackathon(h: Hackathon) {
+    setHackathonId(h.id);
+    setHackathonSearch(h.name);
+    setHackathonDropdownOpen(false);
+  }
+
+  function clearHackathon() {
+    setHackathonId("");
+    setHackathonSearch("");
+  }
 
   function toggleSkill(skill: string) {
     setSkillsOffered((prev) =>
@@ -123,12 +170,8 @@ export default function NewLfgPostPage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Create LFG Post
-          </h1>
-          <p className="text-muted-foreground">
-            Find your next hackathon team
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight">Create Team Post</h1>
+          <p className="text-muted-foreground">Find your next hackathon team</p>
         </div>
       </div>
 
@@ -147,28 +190,28 @@ export default function NewLfgPostPage() {
               </div>
             )}
 
+            {/* Type */}
             <div className="space-y-2">
               <Label>Type</Label>
               <Select
                 value={type}
                 onValueChange={(v) =>
-                  setType((v ?? "looking_for_team") as "looking_for_team" | "looking_for_members")
+                  setType((v ?? "looking_for_team") as typeof type)
                 }
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue />
+                  <span className="flex flex-1 text-left text-sm">
+                    {POST_TYPE_LABELS[type]}
+                  </span>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="looking_for_team">
-                    Looking for Team
-                  </SelectItem>
-                  <SelectItem value="looking_for_members">
-                    Looking for Members
-                  </SelectItem>
+                  <SelectItem value="looking_for_team">Looking for Team</SelectItem>
+                  <SelectItem value="looking_for_members">Looking for Members</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
+            {/* Title */}
             <div className="space-y-2">
               <Label>Title</Label>
               <Input
@@ -179,6 +222,7 @@ export default function NewLfgPostPage() {
               />
             </div>
 
+            {/* Description */}
             <div className="space-y-2">
               <Label>Description</Label>
               <Textarea
@@ -189,28 +233,60 @@ export default function NewLfgPostPage() {
               />
             </div>
 
+            {/* Hackathon combobox */}
             <div className="space-y-2">
-              <Label>Hackathon</Label>
-              <Input
-                placeholder="Search hackathons..."
-                value={hackathonSearch}
-                onChange={(e) => setHackathonSearch(e.target.value)}
-                className="mb-2"
-              />
-              <Select value={hackathonId} onValueChange={(v) => setHackathonId(v ?? "")}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a hackathon" />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredHackathons.map((h) => (
-                    <SelectItem key={h.id} value={h.id}>
-                      {h.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Hackathon <span className="text-muted-foreground">(optional)</span></Label>
+              <div className="relative" ref={hackathonRef}>
+                <div className="relative">
+                  <Input
+                    placeholder="Search hackathons by name..."
+                    value={hackathonSearch}
+                    onChange={(e) => {
+                      setHackathonSearch(e.target.value);
+                      setHackathonId("");
+                      setHackathonDropdownOpen(true);
+                    }}
+                    onFocus={() => setHackathonDropdownOpen(true)}
+                    className={cn(hackathonId && "pr-8")}
+                  />
+                  {hackathonId && (
+                    <button
+                      type="button"
+                      onClick={clearHackathon}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+
+                {hackathonDropdownOpen && filteredHackathons.length > 0 && (
+                  <div className="absolute z-50 mt-1 w-full rounded-lg border bg-popover shadow-md overflow-hidden">
+                    {filteredHackathons.map((h) => (
+                      <button
+                        key={h.id}
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => selectHackathon(h)}
+                        className={cn(
+                          "w-full px-3 py-2 text-left text-sm hover:bg-accent transition-colors",
+                          h.id === hackathonId && "bg-accent"
+                        )}
+                      >
+                        <span className="font-medium">{h.name}</span>
+                        {h.start_date && (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            {new Date(h.start_date).toLocaleDateString()}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
+            {/* Skills offered (looking for team) */}
             {type === "looking_for_team" && (
               <div className="space-y-2">
                 <Label>Skills Offered</Label>
@@ -218,9 +294,7 @@ export default function NewLfgPostPage() {
                   {STACKS.map((stack) => (
                     <Badge
                       key={stack}
-                      variant={
-                        skillsOffered.includes(stack) ? "default" : "outline"
-                      }
+                      variant={skillsOffered.includes(stack) ? "default" : "outline"}
                       className="cursor-pointer"
                       onClick={() => toggleSkill(stack)}
                     >
@@ -231,6 +305,7 @@ export default function NewLfgPostPage() {
               </div>
             )}
 
+            {/* Roles needed (looking for members) */}
             {type === "looking_for_members" && (
               <>
                 <div className="space-y-2">
@@ -239,9 +314,7 @@ export default function NewLfgPostPage() {
                     {ROLES.map((role) => (
                       <Badge
                         key={role}
-                        variant={
-                          rolesNeeded.includes(role) ? "default" : "outline"
-                        }
+                        variant={rolesNeeded.includes(role) ? "default" : "outline"}
                         className="cursor-pointer"
                         onClick={() => toggleRole(role)}
                       >
@@ -262,12 +335,15 @@ export default function NewLfgPostPage() {
               </>
             )}
 
+            {/* Modality / Timezone / Language */}
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-2">
                 <Label>Modality</Label>
                 <Select value={modality} onValueChange={(v) => setModality(v ?? "remote")}>
                   <SelectTrigger className="w-full">
-                    <SelectValue />
+                    <span className="flex flex-1 text-left text-sm">
+                      {MODALITY_LABELS[modality] ?? modality}
+                    </span>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="remote">Remote</SelectItem>
@@ -288,15 +364,24 @@ export default function NewLfgPostPage() {
 
               <div className="space-y-2">
                 <Label>Language</Label>
-                <Input
-                  placeholder="en"
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
-                />
+                <Select value={language} onValueChange={(v) => setLanguage(v ?? "en")}>
+                  <SelectTrigger className="w-full">
+                    <span className="flex flex-1 text-left text-sm">
+                      {LANGUAGE_OPTIONS.find((l) => l.value === language)?.label ?? language}
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LANGUAGE_OPTIONS.map((l) => (
+                      <SelectItem key={l.value} value={l.value}>
+                        {l.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full" disabled={loading || !title}>
               {loading ? "Creating..." : "Create Post"}
             </Button>
           </form>

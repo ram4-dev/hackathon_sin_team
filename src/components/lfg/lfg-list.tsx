@@ -18,12 +18,34 @@ import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectTrigger,
-  SelectValue,
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
 import { ROLES } from "@/types/database";
 import { Plus, Search, Users, User } from "lucide-react";
+
+const MODALITY_LABELS: Record<string, string> = {
+  remote: "Remote",
+  "in-person": "In-person",
+  both: "Both",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  open: "Open",
+  in_conversation: "In Conversation",
+  closed: "Closed",
+};
+
+const ROLE_FILTER_LABELS: Record<string, string> = {
+  all: "All roles",
+};
+
+const MODALITY_FILTER_LABELS: Record<string, string> = {
+  all: "All modalities",
+  remote: "Remote",
+  "in-person": "In-person",
+  both: "Both",
+};
 
 interface LfgListProps {
   posts: LfgPost[];
@@ -39,9 +61,7 @@ export default function LfgList({ posts }: LfgListProps) {
       if (
         hackathonSearch &&
         post.hackathon?.name &&
-        !post.hackathon.name
-          .toLowerCase()
-          .includes(hackathonSearch.toLowerCase())
+        !post.hackathon.name.toLowerCase().includes(hackathonSearch.toLowerCase())
       ) {
         return false;
       }
@@ -58,12 +78,8 @@ export default function LfgList({ posts }: LfgListProps) {
     });
   }, [posts, hackathonSearch, roleFilter, modalityFilter]);
 
-  const teamPosts = filteredPosts.filter(
-    (p) => p.type === "looking_for_team"
-  );
-  const memberPosts = filteredPosts.filter(
-    (p) => p.type === "looking_for_members"
-  );
+  const teamPosts = filteredPosts.filter((p) => p.type === "looking_for_team");
+  const memberPosts = filteredPosts.filter((p) => p.type === "looking_for_members");
 
   return (
     <div className="space-y-4">
@@ -78,9 +94,12 @@ export default function LfgList({ posts }: LfgListProps) {
               className="pl-8 w-48"
             />
           </div>
+
           <Select value={roleFilter} onValueChange={(v) => setRoleFilter(v ?? "all")}>
             <SelectTrigger className="w-36">
-              <SelectValue placeholder="Role" />
+              <span className="flex flex-1 text-left text-sm">
+                {ROLE_FILTER_LABELS[roleFilter] ?? roleFilter}
+              </span>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All roles</SelectItem>
@@ -91,9 +110,12 @@ export default function LfgList({ posts }: LfgListProps) {
               ))}
             </SelectContent>
           </Select>
+
           <Select value={modalityFilter} onValueChange={(v) => setModalityFilter(v ?? "all")}>
             <SelectTrigger className="w-36">
-              <SelectValue placeholder="Modality" />
+              <span className="flex flex-1 text-left text-sm">
+                {MODALITY_FILTER_LABELS[modalityFilter] ?? modalityFilter}
+              </span>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All modalities</SelectItem>
@@ -103,6 +125,7 @@ export default function LfgList({ posts }: LfgListProps) {
             </SelectContent>
           </Select>
         </div>
+
         <Link href="/lfg/new">
           <Button>
             <Plus className="mr-1 h-4 w-4" />
@@ -172,10 +195,7 @@ function LfgCard({ post }: { post: LfgPost }) {
         </div>
         {post.hackathon && (
           <CardDescription>
-            <Link
-              href={`/hackathons/${post.hackathon.id}`}
-              className="hover:underline"
-            >
+            <Link href={`/hackathons/${post.hackathon.id}`} className="hover:underline">
               {post.hackathon.name}
             </Link>
           </CardDescription>
@@ -184,9 +204,7 @@ function LfgCard({ post }: { post: LfgPost }) {
       <CardContent className="space-y-3">
         <div className="flex items-center gap-2">
           <Avatar size="sm">
-            {post.author?.avatar_url && (
-              <AvatarImage src={post.author.avatar_url} />
-            )}
+            {post.author?.avatar_url && <AvatarImage src={post.author.avatar_url} />}
             <AvatarFallback>{authorInitial}</AvatarFallback>
           </Avatar>
           <span className="text-sm">
@@ -202,28 +220,22 @@ function LfgCard({ post }: { post: LfgPost }) {
 
         <div className="flex flex-wrap gap-1">
           {post.skills_offered.map((skill) => (
-            <Badge key={skill} variant="secondary">
-              {skill}
-            </Badge>
+            <Badge key={skill} variant="secondary">{skill}</Badge>
           ))}
           {post.roles_needed.map((role) => (
-            <Badge key={role} variant="secondary">
-              {role}
-            </Badge>
+            <Badge key={role} variant="secondary">{role}</Badge>
           ))}
         </div>
 
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           {post.modality && (
-            <Badge variant="outline">{post.modality}</Badge>
+            <Badge variant="outline">{MODALITY_LABELS[post.modality] ?? post.modality}</Badge>
           )}
           {post.language && (
-            <Badge variant="outline">{post.language}</Badge>
+            <Badge variant="outline">{post.language.toUpperCase()}</Badge>
           )}
-          <Badge
-            variant={post.status === "open" ? "default" : "secondary"}
-          >
-            {post.status}
+          <Badge variant={post.status === "open" ? "default" : "secondary"}>
+            {STATUS_LABELS[post.status] ?? post.status}
           </Badge>
         </div>
       </CardContent>
