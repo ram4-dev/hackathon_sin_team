@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { ROLES, STACKS, HACKATHON_CATEGORIES } from "@/types/database";
 import type { Profile, Hackathon } from "@/types/database";
-import { fuzzCoords } from "@/lib/fuzz-coords";
+import { fuzzCoords, fuzzCoordsSeeded } from "@/lib/fuzz-coords";
 
 type MapBuilder = Pick<
   Profile,
@@ -417,7 +417,9 @@ export function MapView({ builders, hackathons, remoteHackathons = [], initialCe
     if (layer === "builders" || layer === "both") {
       filteredBuilders.forEach((b) => {
         if (!b.location_lng || !b.location_lat) return;
-        addMarker(b.location_lng, b.location_lat, STATUS_COLORS[b.status] ?? "#6b7280", "builder", b);
+        // Seeded by profile id → stable per-user offset, never reveals the true coord.
+        const { lat, lng } = fuzzCoordsSeeded(b.location_lat, b.location_lng, b.id);
+        addMarker(lng, lat, STATUS_COLORS[b.status] ?? "#6b7280", "builder", b);
       });
     }
 
