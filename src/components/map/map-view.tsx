@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { ROLES, STACKS, HACKATHON_CATEGORIES } from "@/types/database";
 import type { Profile, Hackathon } from "@/types/database";
+import { fuzzCoords } from "@/lib/fuzz-coords";
 
 type MapBuilder = Pick<
   Profile,
@@ -311,19 +312,21 @@ export function MapView({ builders, hackathons, remoteHackathons = [], initialCe
 
     map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
 
-    // Browser geolocation fallback (only when server-side IP geo returned nothing)
-    if (!initialCenter && typeof navigator !== "undefined" && navigator.geolocation) {
+    // Browser geolocation — always try (more accurate than IP geo).
+    // Fuzz within ~3km for privacy; if denied, we keep the IP-geo initial view.
+    if (typeof navigator !== "undefined" && navigator.geolocation) {
       map.current.on("load", () => {
         navigator.geolocation.getCurrentPosition(
           (pos) => {
+            const { lat, lng } = fuzzCoords(pos.coords.latitude, pos.coords.longitude);
             map.current?.flyTo({
-              center: [pos.coords.longitude, pos.coords.latitude],
+              center: [lng, lat],
               zoom: 9,
               duration: 1200,
               essential: true,
             });
           },
-          () => { /* denied or unavailable — keep world view */ }
+          () => { /* denied or unavailable — keep initial view */ }
         );
       });
     }

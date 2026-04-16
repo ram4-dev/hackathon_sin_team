@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { createClient } from "@/lib/supabase/client";
+import { fuzzCoords } from "@/lib/fuzz-coords";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -30,7 +31,10 @@ export default function OnboardingPage() {
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
+        // Use the real coords for reverse geocoding (better city match),
+        // but store a ~3km-fuzzed version for privacy.
         const { latitude, longitude } = pos.coords;
+        const fuzzed = fuzzCoords(latitude, longitude);
         try {
           const res = await fetch(
             `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
@@ -40,11 +44,11 @@ export default function OnboardingPage() {
             ...f,
             location_city: data.address?.city || data.address?.town || "",
             location_country: data.address?.country || "",
-            location_lat: latitude,
-            location_lng: longitude,
+            location_lat: fuzzed.lat,
+            location_lng: fuzzed.lng,
           }));
         } catch {
-          setForm((f) => ({ ...f, location_lat: latitude, location_lng: longitude }));
+          setForm((f) => ({ ...f, location_lat: fuzzed.lat, location_lng: fuzzed.lng }));
         }
         setLocating(false);
       },
