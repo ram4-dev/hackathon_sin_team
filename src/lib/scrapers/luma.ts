@@ -76,8 +76,9 @@ export async function scrapeLumaEventUrl(
     const start = toISO(ev.start_at);
     const end = toISO(ev.end_at);
     const geo = ev.geo_address_info;
+    const cityGuess = geo?.city || geo?.city_state?.split(",")[0]?.trim();
     const isOnline =
-      ev.location_type === "online" || geo?.type === "online" || !geo?.city;
+      ev.location_type === "online" || geo?.type === "online" || !cityGuess;
 
     const status: ScrapedHackathon["status"] =
       end && new Date(end) < new Date()
@@ -95,7 +96,7 @@ export async function scrapeLumaEventUrl(
       start_date: start,
       end_date: end,
       modality: isOnline ? "remote" : "in-person",
-      location_city: isOnline ? undefined : geo?.city,
+      location_city: isOnline ? undefined : cityGuess,
       location_country: isOnline ? undefined : geo?.country,
       tags: ["luma"],
       official_url: evUrl,
@@ -179,10 +180,11 @@ export async function scrapeLuma(): Promise<ScrapedHackathon[]> {
         const start = toISO(ev.start_at);
         const end = toISO(ev.end_at);
         const geo = ev.geo_address_info;
+        const cityGuess = geo?.city || geo?.city_state?.split(",")[0]?.trim();
         const isOnline =
           ev.location_type === "online" ||
           geo?.type === "online" ||
-          !geo?.city;
+          !cityGuess;
 
         const status: ScrapedHackathon["status"] =
           end && new Date(end) < new Date()
@@ -200,7 +202,7 @@ export async function scrapeLuma(): Promise<ScrapedHackathon[]> {
           start_date: start,
           end_date: end,
           modality: isOnline ? "remote" : "in-person",
-          location_city: isOnline ? undefined : geo?.city,
+          location_city: isOnline ? undefined : cityGuess,
           location_country: isOnline ? undefined : geo?.country,
           tags: ["luma"],
           official_url: evUrl,

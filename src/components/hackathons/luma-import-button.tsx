@@ -26,6 +26,7 @@ export function LumaImportButton() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [importedName, setImportedName] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
 
   if (!userId) return null;
 
@@ -36,6 +37,7 @@ export function LumaImportButton() {
     setLoading(true);
     setError(null);
     setImportedName(null);
+    setWarning(null);
 
     try {
       const res = await fetch("/api/hackathons/import/luma", {
@@ -50,6 +52,7 @@ export function LumaImportButton() {
         setError(data.error ?? "Failed to import event");
       } else {
         setImportedName(data.hackathon.name);
+        setWarning(data.warning ?? null);
         setUrl("");
         router.refresh();
       }
@@ -65,6 +68,7 @@ export function LumaImportButton() {
       setUrl("");
       setError(null);
       setImportedName(null);
+      setWarning(null);
     }
     setOpen(next);
   }
@@ -94,6 +98,11 @@ export function LumaImportButton() {
             <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-3 text-sm text-green-500">
               <strong>{importedName}</strong> was imported successfully.
             </div>
+            {warning && (
+              <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3 text-xs text-yellow-500">
+                {warning} Use <strong>Fix map locations</strong> to retry.
+              </div>
+            )}
             <DialogFooter showCloseButton>
               <Button
                 variant="outline"

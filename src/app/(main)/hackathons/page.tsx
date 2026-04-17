@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { HackathonList } from "@/components/hackathons/hackathon-list";
 import { LumaImportButton } from "@/components/hackathons/luma-import-button";
+import { GeocodeMissingButton } from "@/components/hackathons/geocode-missing-button";
 import type { Hackathon } from "@/types/database";
 
 export default async function HackathonsPage() {
@@ -26,7 +27,10 @@ export default async function HackathonsPage() {
             {items.length} hackathon{items.length !== 1 ? "s" : ""} listed
           </p>
         </div>
-        <LumaImportButton />
+        <div className="flex flex-wrap items-center gap-2">
+          <GeocodeMissingButton />
+          <LumaImportButton />
+        </div>
       </div>
       <HackathonList hackathons={items} />
     </div>

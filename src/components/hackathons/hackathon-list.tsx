@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { Hackathon } from "@/types/database";
 import { HACKATHON_CATEGORIES } from "@/types/database";
@@ -54,6 +54,27 @@ export function HackathonList({ hackathons }: { hackathons: Hackathon[] }) {
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [modalityFilter, setModalityFilter] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [countryFilter, setCountryFilter] = useState<string | null>(null);
+  const [cityFilter, setCityFilter] = useState<string | null>(null);
+
+  const countries = useMemo(() => {
+    const set = new Set<string>();
+    for (const h of hackathons) {
+      if (h.location_country) set.add(h.location_country);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [hackathons]);
+
+  // Cities narrow to the selected country when one is chosen.
+  const cities = useMemo(() => {
+    const set = new Set<string>();
+    for (const h of hackathons) {
+      if (!h.location_city) continue;
+      if (countryFilter && h.location_country !== countryFilter) continue;
+      set.add(h.location_city);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [hackathons, countryFilter]);
 
   const filtered = hackathons.filter((h) => {
     const matchesSearch =
@@ -70,7 +91,19 @@ export function HackathonList({ hackathons }: { hackathons: Hackathon[] }) {
     const matchesStatus =
       !statusFilter || h.status === statusFilter;
 
-    return matchesSearch && matchesCategory && matchesModality && matchesStatus;
+    const matchesCountry =
+      !countryFilter || h.location_country === countryFilter;
+
+    const matchesCity = !cityFilter || h.location_city === cityFilter;
+
+    return (
+      matchesSearch &&
+      matchesCategory &&
+      matchesModality &&
+      matchesStatus &&
+      matchesCountry &&
+      matchesCity
+    );
   });
 
   return (
@@ -133,6 +166,45 @@ export function HackathonList({ hackathons }: { hackathons: Hackathon[] }) {
             {STATUSES.map((s) => (
               <SelectItem key={s} value={s}>
                 {formatLabel(s)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={countryFilter ?? ""}
+          onValueChange={(val) => {
+            setCountryFilter(val || null);
+            // Reset city when country changes so stale selections don't hide everything.
+            setCityFilter(null);
+          }}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Country" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">All Countries</SelectItem>
+            {countries.map((c) => (
+              <SelectItem key={c} value={c}>
+                {c}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={cityFilter ?? ""}
+          onValueChange={(val) => setCityFilter(val || null)}
+          disabled={cities.length === 0}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="City" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">All Cities</SelectItem>
+            {cities.map((c) => (
+              <SelectItem key={c} value={c}>
+                {c}
               </SelectItem>
             ))}
           </SelectContent>

@@ -44,11 +44,22 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Geocode if location is available
+  // Geocode if location is available. Retry with just the city if the
+  // combined "city, country" lookup fails (Nominatim sometimes misses those).
   let geo: { lat: number; lng: number } | null = null;
   if (scraped.location_city || scraped.location_country) {
     geo = await geocode(scraped.location_city, scraped.location_country);
+    if (!geo && scraped.location_city && scraped.location_country) {
+      geo = await geocode(scraped.location_city);
+    }
+    if (!geo && scraped.location_country) {
+      geo = await geocode(undefined, scraped.location_country);
+    }
   }
+  const geocodeWarning =
+    !geo && scraped.location_city
+      ? `Could not pin "${scraped.location_city}" on the map. The event was imported and will show once someone retries geocoding.`
+      : null;
 
   const supabase = createServiceClient();
 
@@ -86,5 +97,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ hackathon: data }, { status: 201 });
+  return NextResponse.json(
+    { hackathon: data, warning: geocodeWarning },
+    { status: 201 }
+  );
 }
